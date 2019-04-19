@@ -1,8 +1,8 @@
 
 #include "./fsm.h"
 #include "./components.h"
+#include "./agents.h"
 #include <parallel/algorithm>
-
 
 
 /*----------  Subsection comment block  ----------*/
@@ -68,11 +68,11 @@ void testMovingTransitions(Registry& reg) {
     auto ent = group.data()[i];
     auto& entityState = group.template get<Movement::EntityState>(ent);
     if (entityState.stepsSinceUpdated(step) < 10) continue;
-    if (canTransition(0.01) && entityState.canRevert()) {
+    if (canTransition(0.05) && entityState.canRevert()) {
       entityState.revertToPreviousState(step);
-    } else if (canTransition(0.01)) {
+    } else if (canTransition(0.05)) {
       entityState.setNextState(Movement::TypeToEnum<Alt1>::value, step);
-    } else if (canTransition(0.01)) {
+    } else if (canTransition(0.05)) {
       entityState.setNextState(Movement::TypeToEnum<Alt2>::value, step);
     }
   }
@@ -94,9 +94,9 @@ void testStatus(Registry& reg) {
     auto ent = group.data()[i];
     auto& entityState = group.template get<Status::EntityState>(ent);
     if (entityState.stepsSinceUpdated(step) < 10) continue;
-    if (canTransition(0.01) && entityState.canRevert()) {
+    if (canTransition(0.05) && entityState.canRevert()) {
       entityState.revertToPreviousState(step);
-    } else if (canTransition(0.01)) {
+    } else if (canTransition(0.05)) {
       entityState.setNextState(Status::TypeToEnum<Alt1>::value, step);
     }
   }
@@ -183,7 +183,6 @@ void updateStates(Registry& reg, bool parallel) {
   // since the Dead tag doesn't happen till all states have been updated,
   // so the filtering won't happen till next state.
   testDead(reg);
-
 }
 
 
@@ -214,6 +213,8 @@ void updateTags(Registry& reg) {
 
 void updateStateTags(Registry& reg, bool parallel) {
 
+  // I get errors and conflicts when trying to update
+  // multiple component tags at once due to group ownership likely...
   #pragma omp parallel sections if (false)
   {
     #pragma omp section
@@ -273,10 +274,12 @@ void cleanupDead(Registry& reg) {
 void step(Registry& reg) {
   ++reg.ctx<Simulation>().step;
   spawnAgents(reg);
-  updateStates(reg, true);
-  // std::cout << "UPdating state tags " << std::endl;
-  updateStateTags(reg, false);
-  // std::cout << "Done state tags " << std::endl;
+  if (reg.ctx<Simulation>().doParallelAgents) {
+    updatePerAgent(reg);
+  } else {
+    updateStates(reg, reg.ctx<Simulation>().parallelStates);
+    updateStateTags(reg, false);
+  }
   cleanupDead(reg);
 }
 

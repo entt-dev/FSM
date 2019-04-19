@@ -54,7 +54,7 @@ void benchTest(benchmark::State& state) {
 
 }
 
-void stepSimulation(benchmark::State& state) {
+void stepSimulationParallelStates(benchmark::State& state) {
 
   Registry reg;
 
@@ -79,7 +79,62 @@ void stepSimulation(benchmark::State& state) {
 }
 
 
-BENCHMARK(stepSimulation)->Unit(benchmark::kMillisecond);
+void stepSimulationParallelTests(benchmark::State& state) {
+
+  Registry reg;
+
+
+  init(reg);
+
+  const int numAgents = 10000 / 2;
+
+  auto& sim = reg.ctx<Simulation>();
+  sim.preferredSize = numAgents;
+  sim.parallelTests = true;
+  sim.parallelStates = false;
+  auto agent = getAgentPrototype(reg);
+  auto coloredAgent = getColoredAgentPrototype(reg);
+
+  for (int i = 0; i < numAgents; ++i) {
+    agent.create();
+    coloredAgent.create();
+  }
+
+  while (state.KeepRunning()) {
+    step(reg);
+  }
+
+}
+
+void stepSimulationParallelAgents(benchmark::State& state) {
+
+  Registry reg;
+  init(reg);
+  const int numAgents = 10000 / 2;
+
+  auto& sim = reg.ctx<Simulation>();
+  sim.preferredSize = numAgents;
+  sim.parallelTests = false;
+  sim.parallelStates = false;
+  sim.doParallelAgents = true;
+  auto agent = getAgentPrototype(reg);
+  auto coloredAgent = getColoredAgentPrototype(reg);
+
+  for (int i = 0; i < numAgents; ++i) {
+    agent.create();
+    coloredAgent.create();
+  }
+
+  while (state.KeepRunning()) {
+    step(reg);
+  }
+
+}
+
+
+BENCHMARK(stepSimulationParallelAgents)->Unit(benchmark::kMillisecond);
+BENCHMARK(stepSimulationParallelTests)->Unit(benchmark::kMillisecond);
+BENCHMARK(stepSimulationParallelStates)->Unit(benchmark::kMillisecond);
 BENCHMARK(testRandom)->Unit(benchmark::kNanosecond);
 BENCHMARK(benchTest)->Unit(benchmark::kMicrosecond);
 
