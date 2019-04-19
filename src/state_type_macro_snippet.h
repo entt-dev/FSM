@@ -50,6 +50,9 @@ public:
   bool isChangedThisStep(uint step) const {
     return _updatedAt == step;
   }
+  bool canRevert() const {
+    return _currentState != _prevState;
+  }
   bool hasChanged() const {
     return _currentState != _prevState;
   }

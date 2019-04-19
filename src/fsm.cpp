@@ -1,6 +1,7 @@
 
 #include "./fsm.h"
 #include "./components.h"
+#include <parallel/algorithm>
 
 
 
@@ -23,17 +24,24 @@ void testColor(Registry& reg) {
   static_assert(Color::TypeToEnum<Color::Blue>::value == Color::ST_Blue);
 
   uint step = reg.ctx<Simulation>().step;
-  group.each([step](auto currentColor, auto& entityState) {
-    if (entityState.stepsSinceUpdated(step) < 10) return;
-    if (canTransition(0.05) && entityState.hasChanged()) {
+  // for (auto id : group) {
+  // __gnu_parallel::for_each(group.begin(), group.end(),
+  //     [step, &group](EntityType id) {
+
+  #pragma omp parallel for if (reg.ctx<Simulation>().parallelTests)
+  for (uint i = 0; i < group.size(); ++i) {
+    auto id = group.data()[i];
+    auto& entityState = group.template get<Color::EntityState>(id);
+    assert(entityState.current() == Color::TypeToEnum<Current>::value);
+    if (entityState.stepsSinceUpdated(step) < 10) continue;
+    if (canTransition(0.05) && entityState.canRevert()) {
       entityState.revertToPreviousState(step);
     } else if (canTransition(0.05)) {
-      Color::StateType v = Color::TypeToEnum<Alt1>::value;
       entityState.setNextState(Color::TypeToEnum<Alt1>::value, step);
     } else if (canTransition(0.05)) {
       entityState.setNextState(Color::TypeToEnum<Alt2>::value, step);
     }
-  });
+  }
 }
 
 
@@ -51,10 +59,16 @@ void testMovingTransitions(Registry& reg) {
   static_assert(Movement::TypeToEnum<Movement::Rotating>::value == Movement::ST_Rotating);
 
   uint step = reg.ctx<Simulation>().step;
-  for (auto ent : group) {
+  // for (auto ent : group) {
+  // __gnu_parallel::for_each(group.begin(), group.end(),
+  //     [step, &group](EntityType ent) {
+
+  #pragma omp parallel for if (reg.ctx<Simulation>().parallelTests)
+  for (uint i = 0; i < group.size(); ++i) {
+    auto ent = group.data()[i];
     auto& entityState = group.template get<Movement::EntityState>(ent);
     if (entityState.stepsSinceUpdated(step) < 10) continue;
-    if (canTransition(0.01) && entityState.hasChanged()) {
+    if (canTransition(0.01) && entityState.canRevert()) {
       entityState.revertToPreviousState(step);
     } else if (canTransition(0.01)) {
       entityState.setNextState(Movement::TypeToEnum<Alt1>::value, step);
@@ -72,10 +86,15 @@ void testStatus(Registry& reg) {
   static_assert(Status::TypeToEnum<Status::Stationary>::value == Status::ST_Stationary);
 
   uint step = reg.ctx<Simulation>().step;
-  for (auto ent : group) {
+  // for (auto ent : group) {
+  // __gnu_parallel::for_each(group.begin(), group.end(),
+  //     [step, &group](EntityType ent) {
+  #pragma omp parallel for if (reg.ctx<Simulation>().parallelTests)
+  for (uint i = 0; i < group.size(); ++i) {
+    auto ent = group.data()[i];
     auto& entityState = group.template get<Status::EntityState>(ent);
     if (entityState.stepsSinceUpdated(step) < 10) continue;
-    if (canTransition(0.01) && entityState.hasChanged()) {
+    if (canTransition(0.01) && entityState.canRevert()) {
       entityState.revertToPreviousState(step);
     } else if (canTransition(0.01)) {
       entityState.setNextState(Status::TypeToEnum<Alt1>::value, step);
@@ -195,7 +214,7 @@ void updateTags(Registry& reg) {
 
 void updateStateTags(Registry& reg, bool parallel) {
 
-  #pragma omp parallel sections if (parallel)
+  #pragma omp parallel sections if (false)
   {
     #pragma omp section
     {
@@ -278,5 +297,5 @@ void init(Registry& reg) {
   // we need to call all the groups initially serially, since groups cannot be
   // initialized in parallel on the same registry...
   updateStates(reg, false);
-  updateStateTags(reg, false);
+  // updateStateTags(reg, false);
 }

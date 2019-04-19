@@ -48,6 +48,7 @@ struct Simulation {
   uint step{0};
   uint initialSize{100};
   uint preferredSize{200};
+  bool parallelTests{true};
 };
 
 void step(Registry& reg);
