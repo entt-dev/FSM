@@ -44,11 +44,13 @@ However even if the agents are sorted by state, this will probably lead to a lot
 The cpu likes it when we do things over and over, so the closer we are to running the same test function on the same state component, the higher performance we should expect.
 If sets of states are guaranteed to be mutually exclusive to one-another, so that an agent cannot be in two states of the same set, then that means we can parallelize the transition testing of each state.
 
-### Benchmarks
+### Release Benchmarks
 
-Around 3ms for 10,000 agent test-case on 8-core machine when running parallel states
-Around 4ms for 10,000 agent test-case on 8-core machine when running parallel tests
-Around 5ms for 10,000 agent test-case on 8-core machine when running parallel agents with some slower registry indirection going on.
+* Around 3ms for 10,000 agent test-case on 8-core machine when running parallel states
+* Around 4ms for 10,000 agent test-case on 8-core machine when running parallel tests
+* Around 5ms for 10,000 agent test-case on 8-core machine when running parallel agents with some slower registry indirection going on.
+
+Note: I still think it's too slow for how trivial the transition tests are. 
 
 
 ### Thread safety

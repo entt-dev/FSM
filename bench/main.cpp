@@ -38,16 +38,18 @@ void benchTest(benchmark::State& state) {
   while (state.KeepRunning()) {
     auto group = reg.group<Color::Red>(entt::get<Color::EntityState>, entt::exclude<Status::Dead>);
     int step = 100;
+    assert(group.size() == numAgents);
     for (uint i = 0; i < group.size(); ++i) {
       auto id = group.data()[i];
       auto& entityState = group.template get<Color::EntityState>(id);
-      if (entityState.stepsSinceUpdated(step) < 10) continue;
       if (canTransition(0.05) && entityState.canRevert()) {
         entityState.revertToPreviousState(step);
       } else if (canTransition(0.05)) {
-        entityState.setNextState(Color::TypeToEnum<Color::Green>::value, step);
+          // keep it red so the group doesn't get smaller
+        entityState.setNextState(Color::TypeToEnum<Color::Red>::value, step);
       } else if (canTransition(0.05)) {
-        entityState.setNextState(Color::TypeToEnum<Color::Blue>::value, step);
+          // keep it red so the group doesn't get smaller
+        entityState.setNextState(Color::TypeToEnum<Color::Red>::value, step);
       }
     }
   }
