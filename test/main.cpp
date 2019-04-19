@@ -32,13 +32,13 @@ TEST(Fsm, Run) {
   }
 
 
-  reg.view<const Status::EntityState>().each([](const auto& st) {
-    std::cout << "color " << enum2str(st.current()) << std::endl;
-  });
-  reg.view<const Color::EntityState>().each([](const auto& st) {
-    std::cout << "color " << enum2str(st.current()) << std::endl;
-  });
-  reg.view<const Movement::EntityState>().each([](const auto& st) {
-    std::cout << "color " << enum2str(st.current()) << std::endl;
-  });
+  // reg.view<const Status::EntityState>().each([](const auto& st) {
+  //   std::cout << "Status " << enum2str(st.current()) << std::endl;
+  // });
+  // reg.view<const Color::EntityState>().each([](const auto& st) {
+  //   std::cout << "Color " << enum2str(st.current()) << std::endl;
+  // });
+  // reg.view<const Movement::EntityState>().each([](const auto& st) {
+  //   std::cout << "Movement " << enum2str(st.current()) << std::endl;
+  // });
 }

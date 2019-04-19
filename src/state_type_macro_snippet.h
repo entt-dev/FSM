@@ -1,6 +1,8 @@
 // don't have any define guards for this snippet... it's meant to be used
 // multiple times...
 
+struct Last {};
+
 #define etype(x) ST_##x,
 typedef enum { STATES } StateType;
 typedef std::vector<StateType> StateTypes;
@@ -20,9 +22,9 @@ STATES
 #undef etype
 
 #define etype(x) x,
-auto StateTypeList = entt::type_list<
+auto stateTypeList = entt::type_list<
   STATES
-  void
+  Last
 >{};
 #undef etype
 

@@ -120,8 +120,8 @@ entt::prototype getColoredAgentPrototype(Registry& registry) {
   return proto;
 }
 
-void updateStates(Registry& reg) {
-  #pragma omp parallel sections
+void updateStates(Registry& reg, bool parallel) {
+  #pragma omp parallel sections if (parallel)
   {
     #pragma omp section
     {
@@ -167,10 +167,8 @@ void updateTags(Registry& reg) {
   auto group = reg.group<StateEnum>(entt::exclude<Status::Dead>);
   group.each([&reg, step](EntityType id, auto& state) {
     if (state.isChangedThisStep(step)) {
-      std::cout << "REMOVE " << state << std::endl;
       StateEnum::removeTagByEnum(reg, state.previous(), id);
       StateEnum::assignTagByEnum(reg, state.current(), id);
-      std::cout << "DONE " << state << std::endl;
     }
   });
 }
@@ -185,11 +183,25 @@ void updateStateTags(Registry& reg) {
 
 void step(Registry& reg) {
   ++reg.ctx<Simulation>().step;
-  updateStates(reg);
+  updateStates(reg, true);
   updateStateTags(reg);
 }
+
+template <typename... Type, template <typename...> class T>
+void reserveByList(const T<Type...>&, Registry& reg) {
+  (reg.reserve<Type>(10), ...);
+}
+
 
 void init(Registry& reg) {
   reg.set<Simulation>();
 
+  reserveByList(Color::stateTypeList, reg);
+  reserveByList(Status::stateTypeList, reg);
+  reserveByList(Movement::stateTypeList, reg);
+
+
+  // we need to call all the groups initially serially, since groups cannot be
+  // initialized in parallel on the same registry...
+  updateStates(reg, false);
 }
