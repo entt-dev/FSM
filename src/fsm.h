@@ -46,6 +46,8 @@ namespace Status {
 
 struct Simulation {
   uint step{0};
+  uint initialSize{100};
+  uint preferredSize{200};
 };
 
 void step(Registry& reg);

@@ -16,7 +16,7 @@ bool canTransition(float prob) {
 // similar...
 template<typename Current, typename Alt1, typename Alt2>
 void testColor(Registry& reg) {
-  auto group = reg.group<Current>(entt::get<Color::EntityState>);
+  auto group = reg.group<Current>(entt::get<Color::EntityState>, entt::exclude<Status::Dead>);
 
   static_assert(Color::TypeToEnum<Color::Red>::value == Color::ST_Red);
   static_assert(Color::TypeToEnum<Color::Green>::value == Color::ST_Green);
@@ -25,7 +25,7 @@ void testColor(Registry& reg) {
   uint step = reg.ctx<Simulation>().step;
   group.each([step](auto currentColor, auto& entityState) {
     if (entityState.stepsSinceUpdated(step) < 10) return;
-    if (canTransition(0.05)) {
+    if (canTransition(0.05) && entityState.hasChanged()) {
       entityState.revertToPreviousState(step);
     } else if (canTransition(0.05)) {
       Color::StateType v = Color::TypeToEnum<Alt1>::value;
@@ -42,7 +42,9 @@ void testColor(Registry& reg) {
 // similar...
 template<typename Current, typename Alt1, typename Alt2>
 void testMovingTransitions(Registry& reg) {
-  auto group = reg.group<Current>(entt::get<Status::Moving, Movement::EntityState>);
+  auto group = reg.group<Current>(
+    entt::get<Status::Moving, Movement::EntityState>, entt::exclude<Status::Dead>
+  );
 
   static_assert(Movement::TypeToEnum<Movement::Left>::value == Movement::ST_Left);
   static_assert(Movement::TypeToEnum<Movement::Jiggling>::value == Movement::ST_Jiggling);
@@ -52,11 +54,11 @@ void testMovingTransitions(Registry& reg) {
   for (auto ent : group) {
     auto& entityState = group.template get<Movement::EntityState>(ent);
     if (entityState.stepsSinceUpdated(step) < 10) continue;
-    if (canTransition(0.05)) {
+    if (canTransition(0.01) && entityState.hasChanged()) {
       entityState.revertToPreviousState(step);
-    } else if (canTransition(0.05)) {
+    } else if (canTransition(0.01)) {
       entityState.setNextState(Movement::TypeToEnum<Alt1>::value, step);
-    } else if (canTransition(0.05)) {
+    } else if (canTransition(0.01)) {
       entityState.setNextState(Movement::TypeToEnum<Alt2>::value, step);
     }
   }
@@ -73,9 +75,9 @@ void testStatus(Registry& reg) {
   for (auto ent : group) {
     auto& entityState = group.template get<Status::EntityState>(ent);
     if (entityState.stepsSinceUpdated(step) < 10) continue;
-    if (canTransition(0.05)) {
+    if (canTransition(0.01) && entityState.hasChanged()) {
       entityState.revertToPreviousState(step);
-    } else if (canTransition(0.05)) {
+    } else if (canTransition(0.01)) {
       entityState.setNextState(Status::TypeToEnum<Alt1>::value, step);
     }
   }
@@ -121,6 +123,7 @@ entt::prototype getColoredAgentPrototype(Registry& registry) {
 }
 
 void updateStates(Registry& reg, bool parallel) {
+
   #pragma omp parallel sections if (parallel)
   {
     #pragma omp section
@@ -156,35 +159,106 @@ void updateStates(Registry& reg, bool parallel) {
       testStatus<Status::Stationary, Status::Moving>(reg);
     }
   }
-
   // since test dead checks all states, it's not thread safe...
+  // if doesn't really matter if we testdead at start or end,
+  // since the Dead tag doesn't happen till all states have been updated,
+  // so the filtering won't happen till next state.
   testDead(reg);
+
 }
+
+
+// template <typename EntSt, typename... Type, template <typename...> class T>
+// void resetAllStatesOfType(const T<Type...>&, Registry& reg) {
+//   // (reg.reset<Type>(), ...);
+//   (EntSt::removeTagByEnum)
+// }
 
 template<class StateEnum>
 void updateTags(Registry& reg) {
   uint step = reg.ctx<Simulation>().step;
   auto group = reg.group<StateEnum>(entt::exclude<Status::Dead>);
+
   group.each([&reg, step](EntityType id, auto& state) {
     if (state.isChangedThisStep(step)) {
-      StateEnum::removeTagByEnum(reg, state.previous(), id);
+      assert(state.current() != state.previous());
+      // remove all other states if they belong to the agent...
+      // since the previous state may not necessarily match.
+      // this is because the state could change multiple times by different
+      // systems while in serial mode. e.g see the dead system.
+      StateEnum::removeAllTags(reg, id);
+      // now we assign the only tag allowed for this state.
       StateEnum::assignTagByEnum(reg, state.current(), id);
     }
   });
 }
 
-void updateStateTags(Registry& reg) {
+void updateStateTags(Registry& reg, bool parallel) {
 
-  updateTags<Status::EntityState>(reg);
-  updateTags<Color::EntityState>(reg);
-  updateTags<Movement::EntityState>(reg);
+  #pragma omp parallel sections if (parallel)
+  {
+    #pragma omp section
+    {
+        // std::cout << "SECTION 1 " << std::endl;
+      updateTags<Status::EntityState>(reg);
+        // std::cout << "SECTION 1 END " << std::endl;
+    }
+    #pragma omp section
+    {
+        // std::cout << "SECTION 2 " << std::endl;
+      updateTags<Color::EntityState>(reg);
+        // std::cout << "SECTION 2 END " << std::endl;
+    }
+    #pragma omp section
+    {
+        // std::cout << "SECTION 3 " << std::endl;
+      updateTags<Movement::EntityState>(reg);
+        // std::cout << "SECTION 3 END " << std::endl;
+    }
+  }
 
+}
+
+void spawnAgents(Registry& reg) {
+  const auto& s = reg.ctx<Simulation>();
+  auto currentSize = reg.size<Status::EntityState>();
+  if (currentSize >= s.preferredSize) return;
+  assert(currentSize < s.preferredSize);
+  auto diff =  s.preferredSize - currentSize;
+  uint numToSpawn = rand() % diff;
+
+  auto agent = getAgentPrototype(reg);
+  auto coloredAgent = getColoredAgentPrototype(reg);
+
+  for (uint i = 0; i < numToSpawn; ++i) {
+    if (rand() % 2 == 0) {
+      agent.create();
+    } else {
+      coloredAgent.create();
+    }
+  }
+}
+
+void cleanupDead(Registry& reg) {
+  uint step = reg.ctx<Simulation>().step;
+  reg.group<Status::Dead>(entt::get<Status::EntityState>).each([
+    &reg,
+    step
+  ](
+    auto id,
+    const auto& dead, const auto& st) {
+    if (st.stepsSinceUpdated(step) > 10) reg.destroy(id);
+  });
 }
 
 void step(Registry& reg) {
   ++reg.ctx<Simulation>().step;
+  spawnAgents(reg);
   updateStates(reg, true);
-  updateStateTags(reg);
+  // std::cout << "UPdating state tags " << std::endl;
+  updateStateTags(reg, false);
+  // std::cout << "Done state tags " << std::endl;
+  cleanupDead(reg);
 }
 
 template <typename... Type, template <typename...> class T>
@@ -196,12 +270,13 @@ void reserveByList(const T<Type...>&, Registry& reg) {
 void init(Registry& reg) {
   reg.set<Simulation>();
 
-  reserveByList(Color::stateTypeList, reg);
-  reserveByList(Status::stateTypeList, reg);
-  reserveByList(Movement::stateTypeList, reg);
+  reserveByList(Color::EntityState::stateTypeList, reg);
+  reserveByList(Status::EntityState::stateTypeList, reg);
+  reserveByList(Movement::EntityState::stateTypeList, reg);
 
 
   // we need to call all the groups initially serially, since groups cannot be
   // initialized in parallel on the same registry...
   updateStates(reg, false);
+  updateStateTags(reg, false);
 }
