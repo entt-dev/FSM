@@ -18,12 +18,34 @@ TEST(Fsm, Group) {
 
 }
 
-TEST(Fsm, Run) {
+template<typename T>
+void debugState(const Registry& reg, EntityType id, const char* name) {
+  uint step = reg.ctx<const Simulation>().step;
+
+  const auto& st = reg.get<const T>(id);
+  if (!st.isChangedThisStep(step)) return;
+  std::cout << name << " : " << step << " : "
+    << enum2str(st.previous()) << "->"
+    << enum2str(st.current()) << std::endl;
+}
+
+void debugAgent(const Registry& reg, EntityType id) {
+  if (!reg.valid(id)) return;
+   debugState<Color::EntityState>(reg, id, "Color");
+   debugState<Movement::EntityState>(reg, id, "Color");
+   debugState<Status::EntityState>(reg, id, "Color");
+}
+
+
+
+TEST(Fsm, Random) {
 
   Registry reg;
-
-
-  init(reg);
+  reg.set<Simulation>();
+  auto& sim = reg.ctx<Simulation>();
+  sim.randomSeed = rand();
+  sim.randomSeed = rand();
+  // sim.randomSeed = rand();
 
   auto agent = getAgentPrototype(reg);
   auto coloredAgent = getColoredAgentPrototype(reg);
@@ -32,22 +54,80 @@ TEST(Fsm, Run) {
     agent.create();
     coloredAgent.create();
   }
-  ASSERT_EQ(reg.size<Data::Position>(), 200);
-  ASSERT_EQ(reg.size<Status::EntityState>(), 200);
-  ASSERT_EQ(reg.size<Color::EntityState>(), 100);
 
-  for (int i = 0; i < 100; ++i) {
-    step(reg);
+  int numChanged{0};
+  for (auto ent : reg.view<Data::Position>()) {
+    if (canTransition(reg, ent, 0.5)) {
+      ++numChanged;
+    }
   }
+  ASSERT_GE(numChanged, 0);
+}
 
 
-  // reg.view<const Status::EntityState>().each([](const auto& st) {
-  //   std::cout << "color " << enum2str(st.current()) << std::endl;
-  // });
-  // reg.view<const Color::EntityState>().each([](const auto& st) {
-  //   std::cout << "color " << enum2str(st.current()) << std::endl;
-  // });
-  // reg.view<const Movement::EntityState>().each([](const auto& st) {
-  //   std::cout << "color " << enum2str(st.current()) << std::endl;
-  // });
+TEST(Fsm, Run) {
+
+  Registry reg;
+
+
+  init(reg);
+  auto& sim = reg.ctx<Simulation>();
+  sim.preferredSize = 600;
+  sim.printPerformance = true;
+  sim.printTotalPerformance = true;
+  sim.printTestPerformance = true;
+
+  auto agent = getAgentPrototype(reg);
+  auto coloredAgent = getColoredAgentPrototype(reg);
+
+  for (int i = 0; i < 300; ++i) {
+    agent.create();
+    coloredAgent.create();
+  }
+  ASSERT_EQ(reg.size<Data::Position>(), 600);
+  ASSERT_EQ(reg.size<Status::EntityState>(), 600);
+  ASSERT_EQ(reg.size<Color::EntityState>(), 300);
+
+  // auto debugEnt = reg.data<Color::EntityState>()[0];
+  Fsm fsm;
+
+  for (int i = 0; i < 200; ++i) {
+    fsm.step(reg);
+    // debugAgent(reg, debugEnt);
+  }
+}
+
+
+TEST(Fsm, AgentsRun) {
+
+  Registry reg;
+
+  init(reg);
+  auto& sim = reg.ctx<Simulation>();
+  sim.preferredSize = 600;
+  sim.printPerformance = true;
+  sim.printTotalPerformance = true;
+  sim.printTestPerformance = true;
+  sim.parallelTests = false;
+  sim.parallelStates = false;
+  sim.doParallelAgents = true;
+
+  auto agent = getAgentPrototype(reg);
+  auto coloredAgent = getColoredAgentPrototype(reg);
+
+  for (int i = 0; i < 300; ++i) {
+    agent.create();
+    coloredAgent.create();
+  }
+  ASSERT_EQ(reg.size<Data::Position>(), 600);
+  ASSERT_EQ(reg.size<Status::EntityState>(), 600);
+  ASSERT_EQ(reg.size<Color::EntityState>(), 300);
+
+  // auto debugEnt = reg.data<Color::EntityState>()[0];
+  Fsm fsm;
+
+  for (int i = 0; i < 200; ++i) {
+    fsm.step(reg);
+    // debugAgent(reg, debugEnt);
+  }
 }

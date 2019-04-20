@@ -21,12 +21,6 @@ inline const char *enum2str (StateType f) {
 STATES
 #undef etype
 
-#define etype(x) x,
-auto stateTypeList = entt::type_list<
-  STATES
-  Last
->{};
-#undef etype
 
 
 #define etype(x) template<> struct TypeToEnum<x> { inline static const StateType value = ST_##x; };
@@ -46,20 +40,35 @@ public:
   StateType current() const { return _currentState; }
   StateType previous() const { return _prevState; }
   void revertToPreviousState(uint step) {
+    assert(_currentState != _prevState);
     _updatedAt = step;
     std::swap(_currentState, _prevState);
   }
-  uint stepsSinceUpdated(uint simStep) {
+  uint stepsSinceUpdated(uint simStep) const {
     return simStep - _updatedAt;
   }
   bool isChangedThisStep(uint step) const {
     return _updatedAt == step;
+  }
+  bool canRevert() const {
+    return _currentState != _prevState;
+  }
+  bool hasChanged() const {
+    return _currentState != _prevState;
   }
   void setNextState(StateType st, uint step) {
     _updatedAt = step;
     _prevState = _currentState;
     _currentState = st;
   }
+
+
+  #define etype(x) x,
+  inline static const auto stateTypeList = entt::type_list<
+    STATES
+    Last
+  >{};
+  #undef etype
 
   #define etype(x) case ST_##x: {registry.assign<x>(id);} break;
   static void assignTagByEnum(Registry& registry, StateType v, EntityType id) {
@@ -75,6 +84,15 @@ public:
     switch (v) {
       STATES
     }
+  }
+  #undef etype
+
+
+  #define etype(x) if (registry.has<x>(id)) { \
+    registry.remove<x>(id); \
+  }
+  static void removeAllTags(Registry& registry, EntityType id) {
+    STATES
   }
   #undef etype
 
