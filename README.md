@@ -46,11 +46,13 @@ If sets of states are guaranteed to be mutually exclusive to one-another, so tha
 
 ### Release Benchmarks
 
-* Around 3ms for 10,000 agent test-case on 8-core machine when running parallel states
-* Around 4ms for 10,000 agent test-case on 8-core machine when running parallel tests
-* Around 5ms for 10,000 agent test-case on 8-core machine when running parallel agents with some slower registry indirection going on.
+* Around 777us for 10,000 agent test-case on 8-core machine when running OMP_NUM_THREADS=1 agents
+* Around 537us for 10,000 agent test-case on 8-core machine when running OMP_NUM_THREADS=1 states
 
-Note: I still think it's too slow for how trivial the transition tests are. 
+So yes, maybe like 30% speed-up on read-heavy operations when running by grouped states vs. switch case on every agent. I suppose this is a good thing
+when considering that much of the FSM is inspecting other data and not necessarily writing.
+
+Note: I still think it's too slow for how trivial the transition tests are.
 
 
 ### Thread safety
