@@ -8,6 +8,15 @@ int main(int argc, char** argv) {
     return RUN_ALL_TESTS();
 }
 
+TEST(Fsm, Group) {
+
+  Registry reg;
+  // this is invalid apparently...
+  reg.group<Data::Position>(entt::get<Data::Orient>);
+  // reg.group<Data::Orient>(entt::get<Data::Position>);
+  reg.group<Data::Velocity>(entt::get<Data::Orient>);
+
+}
 
 TEST(Fsm, Run) {
 
@@ -33,12 +42,12 @@ TEST(Fsm, Run) {
 
 
   // reg.view<const Status::EntityState>().each([](const auto& st) {
-  //   std::cout << "Status " << enum2str(st.current()) << std::endl;
+  //   std::cout << "color " << enum2str(st.current()) << std::endl;
   // });
   // reg.view<const Color::EntityState>().each([](const auto& st) {
-  //   std::cout << "Color " << enum2str(st.current()) << std::endl;
+  //   std::cout << "color " << enum2str(st.current()) << std::endl;
   // });
   // reg.view<const Movement::EntityState>().each([](const auto& st) {
-  //   std::cout << "Movement " << enum2str(st.current()) << std::endl;
+  //   std::cout << "color " << enum2str(st.current()) << std::endl;
   // });
 }
