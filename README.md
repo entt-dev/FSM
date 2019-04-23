@@ -1,3 +1,8 @@
+## Clone
+
+git 2.13+
+git clone --recurse-submodules -j8 https://github.com/entt-dev/FSM.git
+
 
 ## Linux Build
 
