@@ -305,18 +305,6 @@ void cleanupDead(Registry& reg) {
   });
 }
 
-// void step(Registry& reg) {
-//   ++reg.ctx<Simulation>().step;
-//   reg.ctx<Simulation>().randomSeed = rand();
-//   spawnAgents(reg);
-//   if (reg.ctx<Simulation>().doParallelAgents) {
-//     updatePerAgent(reg);
-//   } else {
-//     updateStates(reg, reg.ctx<Simulation>().parallelStates);
-//     updateStateTags(reg, false);
-//   }
-//   cleanupDead(reg);
-// }
 template <typename... Type, template <typename...> class T>
 void reserveByList(const T<Type...>&, Registry& reg) {
   auto preferredSize = reg.ctx<Simulation>().preferredSize;
@@ -377,13 +365,3 @@ void StopWatch::stepAndPrint(const std::string name) {
 
   std::cout <<  text;
 }
-
-
-// void init(Registry& reg) {
-//   reg.set<Simulation>();
-
-//   reserveByList(Color::EntityState::stateTypeList, reg);
-//   reserveByList(Status::EntityState::stateTypeList, reg);
-//   reserveByList(Movement::EntityState::stateTypeList, reg);
-
-// }
