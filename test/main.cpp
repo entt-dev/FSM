@@ -69,8 +69,8 @@ TEST(Fsm, Run) {
 
   Registry reg;
 
-
-  init(reg);
+  Fsm fsm;
+  fsm.init(reg);
   auto& sim = reg.ctx<Simulation>();
   sim.preferredSize = 600;
   sim.printPerformance = true;
@@ -88,9 +88,6 @@ TEST(Fsm, Run) {
   ASSERT_EQ(reg.size<Status::EntityState>(), 600);
   ASSERT_EQ(reg.size<Color::EntityState>(), 300);
 
-  // auto debugEnt = reg.data<Color::EntityState>()[0];
-  Fsm fsm;
-
   for (int i = 0; i < 200; ++i) {
     fsm.step(reg);
     // debugAgent(reg, debugEnt);
@@ -101,8 +98,9 @@ TEST(Fsm, Run) {
 TEST(Fsm, AgentsRun) {
 
   Registry reg;
+  Fsm fsm;
+  fsm.init(reg);
 
-  init(reg);
   auto& sim = reg.ctx<Simulation>();
   sim.preferredSize = 600;
   sim.printPerformance = true;
@@ -123,8 +121,6 @@ TEST(Fsm, AgentsRun) {
   ASSERT_EQ(reg.size<Status::EntityState>(), 600);
   ASSERT_EQ(reg.size<Color::EntityState>(), 300);
 
-  // auto debugEnt = reg.data<Color::EntityState>()[0];
-  Fsm fsm;
 
   for (int i = 0; i < 200; ++i) {
     fsm.step(reg);

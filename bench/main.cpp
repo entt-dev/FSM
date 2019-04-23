@@ -18,8 +18,8 @@ void benchTest(benchmark::State& state) {
 
   Registry reg;
 
-
-  init(reg);
+  Fsm fsm;
+  fsm.init(reg);
 
   int numAgents = 1000 / 2;
 
@@ -56,9 +56,20 @@ void benchTest(benchmark::State& state) {
 
 }
 
+
+void makeTaskflow(benchmark::State& state) {
+  Registry reg;
+
+  while (state.KeepRunning()) {
+    tf::Taskflow tf;
+    makeTaskflow(reg, tf);
+  }
+}
+
 void stepSimulationParallelStates(benchmark::State& state) {
   Registry reg;
-  init(reg);
+  Fsm fsm;
+  fsm.init(reg);
 
   const int numAgents = 10000 / 2;
 
@@ -71,7 +82,6 @@ void stepSimulationParallelStates(benchmark::State& state) {
     coloredAgent.create();
   }
 
-  Fsm fsm;
 
   while (state.KeepRunning()) {
     fsm.step(reg);
@@ -81,7 +91,8 @@ void stepSimulationParallelStates(benchmark::State& state) {
 
 void stepSimulationParallelTests(benchmark::State& state) {
   Registry reg;
-  init(reg);
+  Fsm fsm;
+  fsm.init(reg);
 
   const int numAgents = 10000 / 2;
 
@@ -97,7 +108,6 @@ void stepSimulationParallelTests(benchmark::State& state) {
     coloredAgent.create();
   }
 
-  Fsm fsm;
   while (state.KeepRunning()) {
     fsm.step(reg);
   }
@@ -105,7 +115,8 @@ void stepSimulationParallelTests(benchmark::State& state) {
 
 void stepSimulationParallelAgents(benchmark::State& state) {
   Registry reg;
-  init(reg);
+  Fsm fsm;
+  fsm.init(reg);
   const int numAgents = 10000 / 2;
 
   auto& sim = reg.ctx<Simulation>();
@@ -121,7 +132,6 @@ void stepSimulationParallelAgents(benchmark::State& state) {
     coloredAgent.create();
   }
 
-  Fsm fsm;
   while (state.KeepRunning()) {
     fsm.step(reg);
   }
@@ -133,6 +143,6 @@ BENCHMARK(stepSimulationParallelTests)->Unit(benchmark::kMicrosecond);
 BENCHMARK(stepSimulationParallelStates)->Unit(benchmark::kMicrosecond);
 BENCHMARK(testRandom)->Unit(benchmark::kNanosecond);
 BENCHMARK(benchTest)->Unit(benchmark::kMicrosecond);
-
+BENCHMARK(makeTaskflow)->Unit(benchmark::kMicrosecond);
 
 BENCHMARK_MAIN();

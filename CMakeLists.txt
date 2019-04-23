@@ -15,6 +15,7 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
 include_directories(
         "${CMAKE_SOURCE_DIR}/src"
         "${CMAKE_SOURCE_DIR}/thirdparty/entt/src"
+        "${CMAKE_SOURCE_DIR}/thirdparty/cpp-taskflow/"
 )
 
 enable_testing()

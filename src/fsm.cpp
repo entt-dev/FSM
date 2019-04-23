@@ -173,43 +173,53 @@ entt::prototype getColoredAgentPrototype(Registry& registry) {
   return proto;
 }
 
-void updateStates(Registry& reg, bool parallel) {
+// template<typename T>
+// void makeTasks(tf::Taskflow tf, Registry& reg, T t) {
+//   tf.emplace([&] { t(reg); });
+// }
 
-  #pragma omp parallel sections if (parallel)
-  {
-    #pragma omp section
-    {
+
+
+void makeTaskflow(Registry& reg, tf::Taskflow& tf) {
+  auto items = tf.emplace(
+    [&reg]() {
       testMovingTransitions<Movement::Left, Movement::Jiggling, Movement::Rotating>(reg);
-    }
-    #pragma omp section
-    {
+    },
+    [&reg]() {
       testMovingTransitions<Movement::Jiggling, Movement::Left, Movement::Rotating>(reg);
-    }
-    #pragma omp section
-    {
+    },
+    [&reg]() {
       testMovingTransitions<Movement::Rotating, Movement::Left, Movement::Left>(reg);
-    }
-    #pragma omp section
-    {
+    },
+    [&reg]() {
       testColor<Color::Red, Color::Green, Color::Blue>(reg);
-    }
-    #pragma omp section
-    {
+    },
+    [&reg]() {
       testColor<Color::Green, Color::Red, Color::Blue>(reg);
-    }
-    #pragma omp section
-    {
+    },
+    [&reg]() {
       testColor<Color::Blue, Color::Green, Color::Red>(reg);
-    }
-    #pragma omp section
-    {
+    },
+    [&reg]() {
       testStatus<Status::Moving, Status::Stationary>(reg);
-    }
-    #pragma omp section
-    {
+    },
+    [&reg]() {
       testStatus<Status::Stationary, Status::Moving>(reg);
     }
+  );
+}
+
+void updateStates(Registry& reg, tf::Taskflow& tf, bool parallel) {
+
+  // uint numWorkers = std::thread::hardware_concurrency();
+  if (!parallel) {
+    tf::Taskflow tserial{0};
+    makeTaskflow(reg, tserial);
+    tserial.wait_for_all();
+  } else {
+    tf.wait_for_all();
   }
+
   // since test dead checks all states, it's not thread safe...
   // if doesn't really matter if we testdead at start or end,
   // since the Dead tag doesn't happen till all states have been updated,
@@ -295,17 +305,34 @@ void cleanupDead(Registry& reg) {
   });
 }
 
-void step(Registry& reg) {
-  ++reg.ctx<Simulation>().step;
-  reg.ctx<Simulation>().randomSeed = rand();
-  spawnAgents(reg);
-  if (reg.ctx<Simulation>().doParallelAgents) {
-    updatePerAgent(reg);
-  } else {
-    updateStates(reg, reg.ctx<Simulation>().parallelStates);
-    updateStateTags(reg, false);
-  }
-  cleanupDead(reg);
+// void step(Registry& reg) {
+//   ++reg.ctx<Simulation>().step;
+//   reg.ctx<Simulation>().randomSeed = rand();
+//   spawnAgents(reg);
+//   if (reg.ctx<Simulation>().doParallelAgents) {
+//     updatePerAgent(reg);
+//   } else {
+//     updateStates(reg, reg.ctx<Simulation>().parallelStates);
+//     updateStateTags(reg, false);
+//   }
+//   cleanupDead(reg);
+// }
+template <typename... Type, template <typename...> class T>
+void reserveByList(const T<Type...>&, Registry& reg) {
+  auto preferredSize = reg.ctx<Simulation>().preferredSize;
+  (reg.reserve<Type>(preferredSize), ...);
+}
+
+
+void Fsm::init(Registry& reg) {
+  reg.set<Simulation>();
+
+  reserveByList(Color::EntityState::stateTypeList, reg);
+  reserveByList(Status::EntityState::stateTypeList, reg);
+  reserveByList(Movement::EntityState::stateTypeList, reg);
+
+  makeTaskflow(reg, _taskflow);
+  updateStates(reg, _taskflow, false);
 }
 
 void Fsm::step(Registry& reg) {
@@ -322,7 +349,7 @@ void Fsm::step(Registry& reg) {
     updatePerAgent(reg);
   } else {
     watch.start();
-    updateStates(reg, reg.ctx<Simulation>().parallelStates);
+    updateStates(reg, _taskflow, reg.ctx<Simulation>().parallelStates);
     watch.stepAndPrint("updateStates us: ");
     updateStateTags(reg, false);
     watch.stepAndPrint("updateStateTags us: ");
@@ -351,23 +378,12 @@ void StopWatch::stepAndPrint(const std::string name) {
   std::cout <<  text;
 }
 
-template <typename... Type, template <typename...> class T>
-void reserveByList(const T<Type...>&, Registry& reg) {
-  auto preferredSize = reg.ctx<Simulation>().preferredSize;
-  (reg.reserve<Type>(preferredSize), ...);
-}
 
+// void init(Registry& reg) {
+//   reg.set<Simulation>();
 
-void init(Registry& reg) {
-  reg.set<Simulation>();
+//   reserveByList(Color::EntityState::stateTypeList, reg);
+//   reserveByList(Status::EntityState::stateTypeList, reg);
+//   reserveByList(Movement::EntityState::stateTypeList, reg);
 
-  reserveByList(Color::EntityState::stateTypeList, reg);
-  reserveByList(Status::EntityState::stateTypeList, reg);
-  reserveByList(Movement::EntityState::stateTypeList, reg);
-
-
-  // we need to call all the groups initially serially, since groups cannot be
-  // initialized in parallel on the same registry...
-  updateStates(reg, false);
-  // updateStateTags(reg, false);
-}
+// }

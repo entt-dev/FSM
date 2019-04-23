@@ -3,6 +3,7 @@
 #include <entt/entt.hpp>
 #include <iostream>
 #include <chrono>
+#include <taskflow/taskflow.hpp>
 
 
 using Registry = entt::registry;
@@ -68,6 +69,7 @@ public:
 };
 
 class Fsm {
+  tf::Taskflow _taskflow;
 
  public:
   Fsm() = default;
@@ -75,6 +77,7 @@ class Fsm {
   void init(Registry& reg);
 };
 
+void makeTaskflow(Registry& reg, tf::Taskflow& tf);
 bool canTransition(const Registry& reg, EntityType ent, float prob);
 void step(Registry& reg);
 void init(Registry& reg);
