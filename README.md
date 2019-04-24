@@ -1,7 +1,8 @@
 ## Clone
 
-git 2.13+
-git clone --recurse-submodules -j8 https://github.com/entt-dev/FSM.git
+if using git 2.13+
+
+    git clone --recurse-submodules -j8 https://github.com/entt-dev/FSM.git
 
 
 ## Linux Build
@@ -57,7 +58,6 @@ If sets of states are guaranteed to be mutually exclusive to one-another, so tha
 So yes, maybe like 30% speed-up on read-heavy operations when running by grouped states vs. switch case on every agent. I suppose this is a good thing
 when considering that much of the FSM is inspecting other data and not necessarily writing.
 
-Note: I still think it's too slow for how trivial the transition tests are.
 
 
 ### Thread safety
@@ -67,3 +67,9 @@ Useful rules to keep in mind.
 Rule 1: When updating the registry during the FSM process, only the agent being tested can be updated. An agent having its state updated cannot update other states at the same time. This is up to the developer to enforce. Only the `EntityState` component should really ever need to be updated. The function objects that are being run however can theoretically be stateful since they're not interacting with anything else.
 
 Rule 2: No signals should be emitted during the parallel sections.
+
+Assigning / removing state component tags needs to occur on a single thread if the tags are being used in may different groups. If the assigning and removing tags becomes significant, then it may start making more sense reverting back to views. It's something the user will have to decide, since this is dependent on the frequency of state changes and the frequency of entity construction/destruction. 
+
+## TODO
+
+* Demonstrate forcing state transitions.
