@@ -69,7 +69,7 @@ public:
 };
 
 class Fsm {
-  tf::Taskflow _taskflow;
+  tf::Framework _framework;
 
  public:
   Fsm() = default;
@@ -77,7 +77,7 @@ class Fsm {
   void init(Registry& reg);
 };
 
-void makeTaskflow(Registry& reg, tf::Taskflow& tf);
+void makeFramework(Registry& reg, tf::Framework& fw);
 bool canTransition(const Registry& reg, EntityType ent, float prob);
 void step(Registry& reg);
 void init(Registry& reg);

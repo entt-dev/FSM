@@ -59,10 +59,9 @@ void benchTest(benchmark::State& state) {
 
 void makeTaskflow(benchmark::State& state) {
   Registry reg;
-
+  // curious cost of making a taskflow instance
   while (state.KeepRunning()) {
-    tf::Taskflow tf;
-    makeTaskflow(reg, tf);
+    tf::Taskflow tf{8};
   }
 }
 

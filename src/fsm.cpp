@@ -180,8 +180,8 @@ entt::prototype getColoredAgentPrototype(Registry& registry) {
 
 
 
-void makeTaskflow(Registry& reg, tf::Taskflow& tf) {
-  auto items = tf.emplace(
+void makeFramework(Registry& reg, tf::Framework& fw) {
+  auto items = fw.emplace(
     [&reg]() {
       testMovingTransitions<Movement::Left, Movement::Jiggling, Movement::Rotating>(reg);
     },
@@ -209,17 +209,16 @@ void makeTaskflow(Registry& reg, tf::Taskflow& tf) {
   );
 }
 
-void updateStates(Registry& reg, tf::Taskflow& tf, bool parallel) {
+void updateStates(Registry& reg, tf::Framework& fw, bool parallel) {
 
-  // uint numWorkers = std::thread::hardware_concurrency();
+  uint numWorkers = std::thread::hardware_concurrency();
   if (!parallel) {
-    tf::Taskflow tserial{0};
-    makeTaskflow(reg, tserial);
-    tserial.wait_for_all();
-  } else {
-    tf.wait_for_all();
+    numWorkers = 0;
   }
 
+  tf::Taskflow taskflow{numWorkers};
+  taskflow.run(fw);
+  taskflow.wait_for_all();
   // since test dead checks all states, it's not thread safe...
   // if doesn't really matter if we testdead at start or end,
   // since the Dead tag doesn't happen till all states have been updated,
@@ -319,8 +318,8 @@ void Fsm::init(Registry& reg) {
   reserveByList(Status::EntityState::stateTypeList, reg);
   reserveByList(Movement::EntityState::stateTypeList, reg);
 
-  makeTaskflow(reg, _taskflow);
-  updateStates(reg, _taskflow, false);
+  makeFramework(reg, _framework);
+  updateStates(reg, _framework, false);
 }
 
 void Fsm::step(Registry& reg) {
@@ -337,7 +336,7 @@ void Fsm::step(Registry& reg) {
     updatePerAgent(reg);
   } else {
     watch.start();
-    updateStates(reg, _taskflow, reg.ctx<Simulation>().parallelStates);
+    updateStates(reg, _framework, reg.ctx<Simulation>().parallelStates);
     watch.stepAndPrint("updateStates us: ");
     updateStateTags(reg, false);
     watch.stepAndPrint("updateStateTags us: ");
