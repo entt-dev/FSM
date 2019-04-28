@@ -217,8 +217,7 @@ void updateStates(Registry& reg, tf::Framework& fw, bool parallel) {
   }
 
   tf::Taskflow taskflow{numWorkers};
-  taskflow.run(fw);
-  taskflow.wait_for_all();
+  taskflow.run(fw).wait();
   // since test dead checks all states, it's not thread safe...
   // if doesn't really matter if we testdead at start or end,
   // since the Dead tag doesn't happen till all states have been updated,
